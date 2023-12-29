@@ -75,7 +75,7 @@ app.get('/ip', verifyToken, (req, res) => {
 
     res.send(ip);
 })
-app.post('/save-subscription', verifyToken, (req, res) => {
+app.post('/save-subscription', (req, res) => {
     console.log("req body=", req.body);
 
     subDatabase.push(req.body);
@@ -83,14 +83,35 @@ app.post('/save-subscription', verifyToken, (req, res) => {
     res.json({ status: "Success", message: "Subscription saved" });
 })
 
-app.post('/send-notification', (req, res) => {
+// app.post('/send-notification', (req, res) => {
+//     if (!req.body.message) {
+//         res.status(400).send("failed");
+//     } else {
+//         webPush.sendNotification(subDatabase[0], req.body.message);
+//         res.json({ status: "Success", message: "Notification sent" });
+//     }
+// })
+
+
+app.post('/send-notification', verifyToken, (req, res) => {
     if (!req.body.message) {
-        res.status(400).send("failed");
+        res.status(400).send("Failed: Message is missing");
+    } else if (subDatabase.length === 0) {
+        res.status(400).send("Failed: No subscriptions available");
     } else {
-        webPush.sendNotification(subDatabase[0], req.body.message);
-        res.json({ status: "Success", message: "Notification sent" });
+        webPush.sendNotification(subDatabase[0], req.body.message)
+            .then(() => {
+                res.json({ status: "Success", message: "Notification sent" });
+            })
+            .catch((error) => {
+                console.error("Notification failed:", error);
+                res.status(500).send("Failed: Notification could not be sent");
+            });
     }
-})
+});
+
+
+
 
 
 
