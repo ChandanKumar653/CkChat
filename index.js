@@ -17,6 +17,7 @@ const url = "mongodb+srv://chandankumar6204995:QVP8wQyEMtaMiwhp@ckchat-subscript
 const client = new MongoClient(url);
 const database = "ckchat-subscription";
 const table = "subscriptions";
+const axios = require("axios");
 const io = require("socket.io")(server, {
     cors: true
 });
@@ -120,6 +121,51 @@ app.post('/save-subscription', verifyToken, async (req, res) => {
 //         res.json({ status: "Success", message: "Notification sent" });
 //     }
 // })
+
+async function verifyRecaptcha(recaptchaResponse) {
+  try {
+    console.log("under vefiry");
+    const response = await axios.post(
+      "https://www.google.com/recaptcha/api/siteverify",
+      null,
+      {
+        params: {
+          secret: "6Ldj98YpAAAAAE--9KZUVIi7U5aFQbLvILBEsRuz",
+          response: recaptchaResponse,
+        },
+      }
+    );
+
+
+    return response.status;
+  } catch (error) {
+    console.error("Error verifying reCAPTCHA:", error);
+    return false;
+  }
+}
+
+app.post("/verifyCaptcha", async (req, res) => {
+//   const { recaptchaToken } = req.body;
+//   console.log(req.body);
+// console.log("recaptchaToken",recaptchaToken);
+  try {
+    const isRecaptchaValid = await verifyRecaptcha(req.body.reCarecaptchaToken);
+console.log(verifyRecaptcha);
+    if (!isRecaptchaValid) {
+      return res.status(400).json({statusCode:400, body: "reCAPTCHA verification failed" });
+    } else {
+      //Add your success response here
+      return res
+        .status(200)
+        .json({ statusCode: 200, body: "reCAPTCHA verification successful" });
+    }
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+
+
 
 
 app.post('/send-notification', verifyToken, async (req, res) => {
