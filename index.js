@@ -9,6 +9,8 @@ const webPush = require('web-push');
 const Ip = require('ip');
 const { MongoClient } = require("mongodb");
 const nodemailer = require("nodemailer");
+const bcrypt = require("bcryptjs");
+
 
 // const io = socketIo(server);
 const jwt = require('jsonwebtoken');
@@ -18,7 +20,7 @@ const url = "mongodb+srv://chandankumar6204995:QVP8wQyEMtaMiwhp@ckchat-subscript
 // const url = "mongodb+srv://cktech:121122zshadow@zshadow.qqanmxh.mongodb.net/?retryWrites=true&w=majority"
 const client = new MongoClient(url);
 const database = "ckchat-subscription";
-const table = "subscriptions";
+
 const axios = require("axios");
 const io = require("socket.io")(server, {
     cors: true
@@ -90,12 +92,13 @@ app.get('/ip',  (req, res) => {
     res.send(ip);
 })
 
-app.post('/register-user',)
+
 
 app.post('/save-subscription', verifyToken, async (req, res) => {
     console.log("req body=", req.body);
     try {
-        const db = await dbConnect();
+      const table = "subscriptions";
+        const db = await dbConnect(table);
         console.log(db);
         const result = await db.insertOne({
             subscription: req.body,
@@ -167,11 +170,42 @@ console.log(verifyRecaptcha);
   }
 });
 
-app.get("/register",async(req,res)=>{
+app.post("/register-user",async(req,res)=>{
     try{
+      const table = "users";
+ const db = await dbConnect(table);
+//  console.log(db);
 
-let send=await sendVerificationLinkToMail("chandankumar6204995@gmail.com","Chandan Kumar");
-return res.json(send);
+
+const existingUser = await db.findOne({ email: req.body.email });
+console.log("existingUser",existingUser);
+if (existingUser) {
+  return res.status(409).json({statusCode:409, body: "User with this email already exists." });
+}
+
+
+ const result = await db.insertOne({
+   name: req.body.name,
+   email:req.body.email,
+   password:bcrypt.hashSync(req.body.password, 10),
+   verified:false,
+   tstamp: Date.now(),
+   dateTime: new Date().toLocaleString(),
+ });
+ console.log("result",result);
+ if (result && result.acknowledged) {
+   console.log("Data added successfully:", result.insertedId);
+   let send = await sendVerificationLinkToMail(
+    req.body.email,
+     req.body.name
+   );
+  //  console.log(send);
+  return res.status(200).json({statusCode:200,body:"Verification email sent",message:send});
+ } else {
+   console.log("Failed to add data.");
+   return res.status(400).json({statusCode:400,body:"Failed to register user"});
+ }
+
     }catch(e){
 return res.status(500).json({statusCode:500,body:"Error:"+e})
     }
@@ -191,72 +225,82 @@ async function sendVerificationLinkToMail(email,name) {
     subject: "CkChat User Verification",
     html: `
     <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Email Verification</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      
-    }
-    .container {
-      max-width: 600px;
-      margin: 20px auto;
-      padding: 20px;
-      background-color: #fff;
-      border-radius: 8px;
-      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-    }
-    h1 {
-      color: #000;
-      text-align: center;
-      font-weight: bold;
-    }
-    p {
-      color: #333;
-      font-size: 16px;
-      line-height: 1.6;
-       font-weight: bold;
-    }
-    .btn {
-      display: inline-block;
-      padding: 12px 24px;
-      background-color: blue;
-      color: white  !important;
-      text-decoration: none;
-      border-radius: 5px;
-       font-weight: 900;
-      
-    }
-  
-    .footer {
-      text-align: center;
-      margin-top: 20px;
-      color: #999;
-      font-size: 14px;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Email Verification</h1>
-    <p>Hello ${name},</p>
-    <p>To complete your registration, please click the button below to verify your email address:</p>
-    <a href="ckchat.netlify.app" class="btn">Verify Email</a>
-    <p>If you did not request this, please ignore this email.</p>
-    <div class="footer">
-      <p>This email was sent by CkChat. © 2024. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>
-
-        `,
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Email Verification</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 0;
+        }
+        .container {
+          max-width: 600px;
+          margin: 20px auto;
+          padding: 20px;
+          background-color: #fff;
+          border-radius: 8px;
+          box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        .logo {
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        .logo img {
+          max-width: 200px;
+          height: auto;
+        }
+        h1 {
+          color: #000;
+          text-align: center;
+          font-weight: bold;
+        }
+        p {
+          color: #333;
+          font-size: 16px;
+          line-height: 1.6;
+          font-weight: bold;
+        }
+        .btn {
+          display: inline-block;
+          padding: 12px 24px;
+          background-color: blue;
+          color: white !important;
+          text-decoration: none;
+          border-radius: 5px;
+          font-weight: 900;
+        }
+        .footer {
+          text-align: center;
+          margin-top: 20px;
+          color: #666;
+          font-size: 12px;
+        }
+        #last{
+           font-size: 14px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="logo">
+          <img src="https://orange-media.s3.ap-south-1.amazonaws.com/userProfile/speak.png" alt="CkChat Logo">
+        </div>
+        <h1>Email Verification</h1>
+        <p>Hello ${name},</p>
+        <p>To complete your registration, please click the button below to verify your email address:</p>
+        <a href="ckchat.netlify.app" class="btn">Verify Email</a>
+        <p>Or copy this URL and paste it in a new tab of your browser: <a href="ckchat.netlify.app">ckchat.netlify.app</a></p>
+        <p id="last">If you didn't request this, no further action is needed.</p>
+       
+      </div>
+    </body>
+    </html>
+    `,
   };
+
 
   try {
     await transporter.sendMail(mailOptions);
@@ -278,7 +322,8 @@ app.post('/send-notification', verifyToken, async (req, res) => {
     // } 
     else {
         try {
-            const db = await dbConnect();
+          const table = "subscriptions";
+            const db = await dbConnect(table);
             // console.log(db);
             const result = await db.find({}).toArray();;
             console.log(result)
@@ -473,26 +518,27 @@ socket.on("call-user",(data)=>{
 
 
 
+async function dbConnect(table) {
+  try {
+    // Connect to the MongoDB client
+    const client = await MongoClient.connect(url, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
 
-async function dbConnect() {
-    try {
-        let result = await client.connect();
-        // console.log(result);
-        // console.log(database, table);
-        let db = result.db(database);
-        // console.log(db);
-        // let collection = db.collection('user')
-        return db.collection(table);
-        // let response = await collection.find({ id: 'ck@gmail.com' }).toArray()
-        // console.log(response)
-    } catch (e) {
-        return {
-            statusCode: 500,
-            body: e.message
-        }
+    // Get the database and return the collection
+    const db = client.db(database);
+    return db.collection(table);
+  } catch (e) {
+    // Throw the error to indicate failure
+    throw new Error(`Failed to connect to the database: ${e.message}`);
+  } finally {
+    // Close the MongoDB client to release resources
+    if (client) {
+      await client.close();
     }
+  }
 }
-
 
 
 
