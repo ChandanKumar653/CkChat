@@ -8,6 +8,8 @@ const server = http.createServer(app);
 const webPush = require('web-push');
 const Ip = require('ip');
 const { MongoClient } = require("mongodb");
+const nodemailer = require("nodemailer");
+
 // const io = socketIo(server);
 const jwt = require('jsonwebtoken');
 const secretKey = "CkChatIsAChatApp3894893&(O(O(&*(0)(**y(K_(O_(~@!~~2@#343322#$2"
@@ -161,10 +163,109 @@ console.log(verifyRecaptcha);
     }
   } catch (error) {
     console.log(error);
+    return res.status(500).json({statusCode:500,body:"reCAPTCHA failed"});
   }
 });
 
+app.get("/register",async(req,res)=>{
+    try{
 
+let send=await sendVerificationLinkToMail("chandankumar6204995@gmail.com","Chandan Kumar");
+return res.json(send);
+    }catch(e){
+return res.status(500).json({statusCode:500,body:"Error:"+e})
+    }
+})
+async function sendVerificationLinkToMail(email,name) {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: "chandankumar82945772@gmail.com",
+      pass: "suwqjvqufhhkpxsh",
+    },
+  });
+
+  const mailOptions = {
+    from: "CkChat<no-reply@ckchat.netlify.app>",
+    to: email,
+    subject: "CkChat User Verification",
+    html: `
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Verification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #000;
+      text-align: center;
+      font-weight: bold;
+    }
+    p {
+      color: #333;
+      font-size: 16px;
+      line-height: 1.6;
+       font-weight: bold;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: blue;
+      color: white  !important;
+      text-decoration: none;
+      border-radius: 5px;
+       font-weight: 900;
+      
+    }
+  
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      color: #999;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Email Verification</h1>
+    <p>Hello ${name},</p>
+    <p>To complete your registration, please click the button below to verify your email address:</p>
+    <a href="ckchat.netlify.app" class="btn">Verify Email</a>
+    <p>If you did not request this, please ignore this email.</p>
+    <div class="footer">
+      <p>This email was sent by CkChat. © 2024. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
+
+        `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log("Link sent to email:", email);
+  } catch (error) {
+    console.error("Error sending link to email:", error);
+    throw error;
+  }
+}
 
 
 
