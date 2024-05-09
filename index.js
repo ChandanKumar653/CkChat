@@ -184,33 +184,52 @@ if (existingUser) {
 }
 
 
- const result = await db.insertOne({
-   name: req.body.name,
-   email:req.body.email,
-   password:bcrypt.hashSync(req.body.password, 10),
-   verified:false,
-   tstamp: Date.now(),
-   dateTime: new Date().toLocaleString(),
- });
- console.log("result",result);
- if (result && result.acknowledged) {
-   console.log("Data added successfully:", result.insertedId);
+//  const result = await db.insertOne({
+//    name: req.body.name,
+//    email:req.body.email,
+//    password:bcrypt.hashSync(req.body.password, 10),
+//    verified:false,
+//    role:"user",
+//    tstamp: Date.now(),
+//    dateTime: new Date().toLocaleString(),
+//  });
+//  console.log("result",result);
+//  if (result && result.acknowledged) {
+//    console.log("Data added successfully:", result.insertedId);
+
+    const secretKey = "*&&*&*Y*U(CkChat)&^%";
+
+    // Prepare payload for JWT token
+    let payload = {
+      email: req.body["email"],
+      name: req.body.name,
+      password: bcrypt.hashSync(req.body.password, 10),
+    };
+    console.log("Payload : ", payload);
+
+    // Generate JWT token with payload
+    var token = jwt.sign(payload, secretKey, { expiresIn: "5m" });
+    var link =  `http://localhost:3000/auth/${token}`;
    let send = await sendVerificationLinkToMail(
     req.body.email,
-     req.body.name
+     req.body.name,
+     link
    );
   //  console.log(send);
-  return res.status(200).json({statusCode:200,body:"Verification email sent",message:send});
- } else {
-   console.log("Failed to add data.");
-   return res.status(400).json({statusCode:400,body:"Failed to register user"});
- }
+  
+
+  return res.status(200).json({statusCode:200,body:"Verification email sent",message:send,token:token});
+//  }
+//   else {
+//    console.log("Failed to add data.");
+//    return res.status(400).json({statusCode:400,body:"Failed to register user"});
+//  }
 
     }catch(e){
 return res.status(500).json({statusCode:500,body:"Error:"+e})
     }
 })
-async function sendVerificationLinkToMail(email,name) {
+async function sendVerificationLinkToMail(email,name,link) {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -281,22 +300,26 @@ async function sendVerificationLinkToMail(email,name) {
         #last{
            font-size: 14px;
         }
+        #lnk{
+          font-size: 12px
+        }
       </style>
     </head>
     <body>
-      <div class="container">
-        <div class="logo">
+   <div class="container">
+       <div class="logo">
           <img src="https://orange-media.s3.ap-south-1.amazonaws.com/userProfile/speak.png" alt="CkChat Logo">
         </div>
-        <h1>Email Verification</h1>
-        <p>Hello ${name},</p>
-        <p>To complete your registration, please click the button below to verify your email address:</p>
-        <a href="ckchat.netlify.app" class="btn">Verify Email</a>
-        <p>Or copy this URL and paste it in a new tab of your browser: <a href="ckchat.netlify.app">ckchat.netlify.app</a></p>
-        <p id="last">If you didn't request this, no further action is needed.</p>
-       
-      </div>
-    </body>
+  <h1>Email Verification</h1>
+  <p>Hello ${name},</p>
+  <p>To complete your registration, please click the button below to verify your email address:</p>
+  <a href=${link} class="btn">Verify Email</a>
+ 
+  <p>Please note that this verification link will expire in 2 minutes for security reasons. If you don't verify your email within this time frame, you may need to request a new verification link.</p>
+
+  <p id="last">If you didn't request this, no further action is needed.</p>
+</div>
+  </body>
     </html>
     `,
   };
@@ -522,8 +545,8 @@ async function dbConnect(table) {
   try {
     // Connect to the MongoDB client
     const client = await MongoClient.connect(url, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      // useNewUrlParser: true,
+      // useUnifiedTopology: true,
     });
 
     // Get the database and return the collection
