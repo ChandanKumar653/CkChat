@@ -10,7 +10,7 @@ const Ip = require('ip');
 const { MongoClient } = require("mongodb");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
-
+const env=require('dotenv');
 
 // const io = socketIo(server);
 const jwt = require('jsonwebtoken');
@@ -18,6 +18,8 @@ const secretKey = "CkChatIsAChatApp3894893&(O(O(&*(0)(**y(K_(O_(~@!~~2@#343322#$
 const url = "mongodb+srv://chandankumar6204995:QVP8wQyEMtaMiwhp@ckchat-subscription.ozh698x.mongodb.net/?retryWrites=true&w=majority"
 // const url = "mongodb://localhost:27017";
 // const url = "mongodb+srv://cktech:121122zshadow@zshadow.qqanmxh.mongodb.net/?retryWrites=true&w=majority"
+// const url = env.MONGODB_URI;
+// console.log("url=",url);
 const client = new MongoClient(url);
 const database = "ckchat-subscription";
 
@@ -27,7 +29,7 @@ const io = require("socket.io")(server, {
 });
 app.use(cors());
 
-var bodyParser = require('body-parser')
+var bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: false }));
 
 // parse application/json
@@ -42,27 +44,51 @@ const socketToEmailMapping=new Map();
 let allGlobalUsers=[];
 const roomUsers = {};
 console.log(token);
-const verifyToken = (req, res, next) => {
-    const token = req.headers.authorization;
+// const verifyToken = (req, res, next) => {
+//     const token = req.headers.authorization;
 
-    if (token) {
-        try {
-            const decoded = jwt.verify(token, secretKey);
-            req.user = decoded; // Attach user data to the request object if needed
-            return next();
-        } catch (err) {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-    } else {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+//     if (token) {
+//         try {
+//             const decoded = jwt.verify(token, secretKey);
+//             req.user = decoded; // Attach user data to the request object if needed
+//             return next();
+//         } catch (err) {
+//             return res.status(401).json({ error: 'Unauthorized' });
+//         }
+//     } else {
+//         return res.status(401).json({ error: 'Unauthorized' });
+//     }
+// };
+const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization;
+  const origin = req.headers.origin;
+
+  // List of authorized origins
+  const authorizedOrigins = ["http://localhost:3000", "https://ckchat1.vercel.app","https://ckchat.netlify.app"];
+
+  // Check if the request origin is in the list of authorized origins
+  // if (origin && authorizedOrigins.includes(origin)) {
+    // if (token) {
+    //   try {
+    //     const decoded = jwt.verify(token, secretKey);
+    //     req.user = decoded; // Attach user data to the request object if needed
+        return next();
+    //   } catch (err) {
+    //     return res.status(401).json({ error: "Unauthorized" });
+    //   }
+    // } else {
+    //   return res.status(401).json({ error: "Unauthorized" });
+    // }
+  // } else {
+  //   return res.status(403).json({ error: "Forbidden" });
+  // }
 };
+
 
 // Example protected route
 app.get('/protected', verifyToken, (req, res) => {
     res.json({ message: 'This is a protected route' });
 });
-
 
 
 
@@ -166,11 +192,115 @@ console.log(verifyRecaptcha);
     }
   } catch (error) {
     console.log(error);
-    return res.status(500).json({statusCode:500,body:"reCAPTCHA failed"});
+    return res.status(500).json({statusCode:500,body:"reCAPTCHA failed:",error});
   }
 });
 
-app.post("/register-user",async(req,res)=>{
+
+app.post("/send-message",verifyToken,async(req,res)=>{
+  try{
+let {
+ user_id,
+  message,
+  sender_id,
+  receiver_id
+}=req.body;
+
+
+
+if(!message||!receiver_id||!sender_id||!user_id){
+  return res.status(400).json({statusCode:400,body:"Message,receiver and sender is required"});
+}else{
+
+  try{
+var db=await dbConnect("chats");
+  }catch(e){
+    return res.status(500).json({statusCode:500,body:"Error connecting database:",e})
+  }
+
+
+   const now = new Date();
+   // Manually adjust for Asia/Kolkata timezone (UTC+5:30)
+   now.setMinutes(now.getMinutes() + now.getTimezoneOffset() + 330);
+   const formattedDate = now.toISOString().split("T")[0];
+   const formattedTime = now.toTimeString().split(" ")[0];
+
+   let payload = {
+     message_id: Math.random() + Date.now(),
+     timestamp: Date.now(),
+     user_id,
+     message,
+     sender_id,
+     receiver_id,
+     dateTime: now,
+     date: formattedDate,
+     time: formattedTime,
+   };
+
+console.log(payload);
+try{
+   var result = await db.insertOne(payload);
+}catch(e){
+      return res
+        .status(500)
+        .json({ statusCode: 400, body: "Stroring message failed:", e });
+}
+
+ if(result&&result.acknowledged){
+return res.status(200).json({ statusCode: 200, body: "Message sent" });
+ }else{
+  return res.status(400).json({ statusCode: 400, body: "Error storing message to database" });
+
+ }
+
+}
+
+  }catch(e){
+    return res.status(500).json({ statusCode: 500, body: "Sending message failed:",e });
+  }
+})
+
+app.post("/login",async(req,res)=>{
+try{
+  const {email,password}=req.body;
+  if(!email||!password){
+    return res.status(400).json({statusCode:400,body:"Email and password are required"});
+  }
+  const table = "users";
+  const db = await dbConnect(table);
+  const existingUser = await db.findOne({ email: req.body.email });
+  console.log("existingUser", existingUser);
+  if (!existingUser) {
+    return res.status(409).json({ statusCode: 400, body: "Incorrect email" });
+  }
+  console.log(bcrypt.compareSync(password, existingUser['password']));
+ if( bcrypt.compareSync(password, existingUser['password'])){
+
+   const secretKey = "loginCkChat*&&*&*Y*U(CkChat)&^%loginCkChat";
+
+   // Prepare payload for JWT token
+   let payload = {
+     email: req.body["email"],
+     name: existingUser.name,
+     role:existingUser.role
+   };
+   console.log("Payload : ", payload);
+
+   // Generate JWT token with payload
+   var token = jwt.sign(payload, secretKey, { expiresIn: "60m" });
+
+   return res.status(200).json({ statusCode: 200, body: "Login success",token:token });
+ }else{
+   return res.status(400).json({ statusCode: 400, body: "Incorrect password" });
+ }
+}catch(e){
+  return res.status(500).json({statusCode:500,body:"Login Error:"+e.message})
+}
+
+})
+
+
+app.post("/register-user",async(req,res)=>{ 
     try{
       const table = "users";
  const db = await dbConnect(table);
@@ -218,7 +348,7 @@ if (existingUser) {
   //  console.log(send);
   
 
-  return res.status(200).json({statusCode:200,body:"Verification email sent",message:send,token:token});
+  return res.status(200).json({statusCode:200,body:"Verification email sent",message:send});
 //  }
 //   else {
 //    console.log("Failed to add data.");
@@ -226,7 +356,7 @@ if (existingUser) {
 //  }
 
     }catch(e){
-return res.status(500).json({statusCode:500,body:"Error:"+e})
+return res.status(500).json({statusCode:500,body:""+e})
     }
 })
 async function sendVerificationLinkToMail(email,name,link) {
@@ -308,14 +438,14 @@ async function sendVerificationLinkToMail(email,name,link) {
     <body>
    <div class="container">
        <div class="logo">
-          <img src="https://orange-media.s3.ap-south-1.amazonaws.com/userProfile/speak.png" alt="CkChat Logo">
+          <img src="https://godda.s3.ap-south-1.amazonaws.com/speak.png" alt="CkChat Logo">
         </div>
   <h1>Email Verification</h1>
   <p>Hello ${name},</p>
   <p>To complete your registration, please click the button below to verify your email address:</p>
   <a href=${link} class="btn">Verify Email</a>
  
-  <p>Please note that this verification link will expire in 2 minutes for security reasons. If you don't verify your email within this time frame, you may need to request a new verification link.</p>
+  <p>Please note that this verification link will expire in 5 minutes for security reasons. If you don't verify your email within this time frame, you may need to request a new verification link.</p>
 
   <p id="last">If you didn't request this, no further action is needed.</p>
 </div>
@@ -333,6 +463,65 @@ async function sendVerificationLinkToMail(email,name,link) {
     throw error;
   }
 }
+
+app.post('/verify-user',async(req,res)=>{
+  try{
+    console.log(req.body);
+    if(!req.body.token){
+      res.status(400).json({statusCode:400,body:"Token required"})
+    }
+    const secretKey = "*&&*&*Y*U(CkChat)&^%";
+    let verify=jwt.verify(req.body.token,secretKey)
+console.log("verify=",verify);
+let decoded=await jwt.decode(req.body.token);
+console.log("decoded",decoded);
+   const table = "users";
+   const db = await dbConnect(table);
+const existingUser = await db.findOne({ email: decoded.email });
+console.log("existingUser", existingUser);
+if (existingUser) {
+  return res
+    .status(409)
+    .json({ statusCode: 409, body: "User already exists." });
+}
+
+     const result = await db.insertOne({
+       name: decoded.name,
+       email:decoded.email,
+       password:decoded.password,
+       verified:true,
+       role:"user",
+       profileImage:"",
+       tstamp: Date.now(),
+       dateTime: new Date().toLocaleString(),
+     });
+     console.log("result",result);
+     if (result && result.acknowledged) {
+       console.log("User added successfully:", result.insertedId);
+       res.status(200).json({statusCode:200,body:"User added successfully"});
+  }else{
+   return res.status(400).json({ statusCode: 400, body: "Error:" + result });
+  }
+  }catch(e){
+    return res.status(500).json({ statusCode: 500, body: "Error:" + e });
+  }
+})
+
+
+app.get('/all-users',verifyToken,async(req,res)=>{
+  try{
+       const table = "users";
+       const db = await dbConnect(table);
+const users = await db.find({}, { projection: { name: 1, email: 1, _id: 0 } }).toArray();
+
+       console.log(users);
+       return res.status(200).json({statusCode:200,body:users});
+
+  }catch(e){
+    console.log(e);
+    return res.status(500).json({body:"Server Error:"+e});
+  }
+})
 
 
 
@@ -561,8 +750,7 @@ async function dbConnect(table) {
       await client.close();
     }
   }
-}
-
+} 
 
 
 

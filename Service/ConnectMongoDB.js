@@ -1,24 +1,36 @@
 const { MongoClient } = require("mongodb");
 const dontenv = require("dotenv");
+// const url = "mongodb+srv://cktech:121122zshadow@zshadow.qqanmxh.mongodb.net/?retryWrites=true&w=majority"
+const url = env.MONGODB_URI;
+console.log("url=",url);
+const client = new MongoClient(url);
 
-// const uri ="mongodb+srv://chandankumar6204995:QVP8wQyEMtaMiwhp@ckchat-subscription.ozh698x.mongodb.net/?retryWrites=true&w=majority";
-const uri = process.env.MONGODB_URI;
-console.log(uri);
-const dbName = "ckchat-subscription"; 
+
+const database = "ckchat-subscription";
 
 async function connectToMongoDB() {
-  const client = new MongoClient(uri);
+  
 
   try {
-    await client.connect();
+    // Connect to the MongoDB client
+    const client = await MongoClient.connect(url, {
+      // useNewUrlParser: true,
+      // useUnifiedTopology: true,
+    });
 
-    console.log("Connected to MongoDB");
-    const db = client.db(dbName);
-    return db;
-  } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
-    throw error; 
+    // Get the database and return the collection
+    const db = client.db(database);
+    return db.collection(table);
+  } catch (e) {
+    // Throw the error to indicate failure
+    throw new Error(`Failed to connect to the database: ${e.message}`);
+  } finally {
+    // Close the MongoDB client to release resources
+    if (client) {
+      await client.close();
+    }
   }
+
 }
 
 module.exports = connectToMongoDB;
