@@ -11,7 +11,8 @@ const { MongoClient } = require("mongodb");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const env=require('dotenv');
-
+// const serverUrl = "http://localhost:3001";
+const serverUrl="https://ckchat1.vercel.app";
 // const io = socketIo(server);
 const jwt = require('jsonwebtoken');
 const secretKey = "CkChatIsAChatApp3894893&(O(O(&*(0)(**y(K_(O_(~@!~~2@#343322#$2"
@@ -339,7 +340,7 @@ if (existingUser) {
 
     // Generate JWT token with payload
     var token = jwt.sign(payload, secretKey, { expiresIn: "5m" });
-    var link =  `http://localhost:3000/auth/${token}`;
+    var link =  `${serverUrl}/auth/${token}`;
    let send = await sendVerificationLinkToMail(
     req.body.email,
      req.body.name,
