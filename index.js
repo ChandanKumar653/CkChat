@@ -11,7 +11,7 @@ const { MongoClient } = require("mongodb");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const env=require('dotenv');
-// const serverUrl = "http://localhost:3001";
+// const serverUrl = "http://localhost:3000";
 const serverUrl="https://ckchat1.vercel.app";
 // const io = socketIo(server);
 const jwt = require('jsonwebtoken');
@@ -525,6 +525,32 @@ const users = await db.find({}, { projection: { name: 1, email: 1, _id: 0 } }).t
 })
 
 
+app.get('/messages/:user_id/:receiver_id', async (req, res) => {
+  try {
+    const table = "messages";
+    const db = await dbConnect(table);
+    const userId = req.params.user_id;
+    const receiverId = req.params.receiver_id;
+
+    // Fetch messages where either user is the sender and receiver is the receiver, or user is the receiver and receiver is the sender
+    const userMessages = await db.find(
+      {
+        $or: [
+          { user_id: userId, receiver_id: receiverId },
+          { user_id: receiverId, receiver_id: userId }
+        ]
+      },
+      { projection: { message: 1, tstamp: 1, sender_id: 1, receiver_id: 1, _id: 0 } } // Include 'message', 'tstamp', 'sender_id', and 'receiver_id', exclude '_id'
+    ).toArray();
+
+    res.status(200).json({ statusCode: 200, body: userMessages });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ statusCode: 500, body: 'An error occurred while fetching messages', error });
+  }
+});
+
+
 
 app.post('/send-notification', verifyToken, async (req, res) => {
     if (!req.body.message) {
@@ -569,16 +595,34 @@ app.post('/send-notification', verifyToken, async (req, res) => {
 
 io.use((socket, next) => {
     const token = socket.handshake.auth.token;
-
+console.log(token);
     if (token) {
         try {
-            const decoded = jwt.verify(token, secretKey);
+          const secretKey1 = "loginCkChat*&&*&*Y*U(CkChat)&^%loginCkChat";
+            const decoded = jwt.verify(token, secretKey1);
+            console.log(decoded);
             socket.decoded = decoded; // Attach user data to the socket if needed
+            
             return next();
         } catch (err) {
+
+          try {
+          
+            const decoded = jwt.verify(token, secretKey);
+            console.log(decoded);
+            socket.decoded = decoded; // Attach user data to the socket if needed
+
+            return next();
+          }catch(e){
+            console.log("Authentication Errror:", err);
             return next(new Error('Authentication error'));
+          }
+
+          
+       
         }
     } else {
+      console.log("Authorization error:");
         return next(new Error('Authentication error'));
     }
 });
@@ -676,7 +720,34 @@ console.log("roomUsers while join=",roomUsers)
         // io.emit('chat message', msg); // Broadcasting the message to all connected clients
     });
 
+socket.on("private-message",async(data)=>{
+  console.log("Under private-message",data);
+  let {
+    user_id,
+    message,
+    sender_id,
+    receiver_id
+  } = data;
+if(!user_id||!message||!sender_id||!receiver_id){
+  io.emit('private-message-complete', "User id, message, sender id, receiver id are required");
+  return;
+}
+ const table = "messages";
+ let params={
+  user_id,
+  message,
+  sender_id,
+  receiver_id,
+  tstamp:Date.now()
+ }
+            const db = await dbConnect(table);
+            // console.log(db);
+            const result = await db.insertOne(params);
+       console.log(result);
+  io.emit('private-message-complete',result.acknowledged);
 
+
+})
 
 //     socket.on("user-left", (data) => {
 //         console.log("user left",data);
