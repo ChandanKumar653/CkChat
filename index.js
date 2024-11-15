@@ -1,7 +1,7 @@
 const http = require('http');
 const express = require('express');
 const socketIo = require('socket.io');
-let port = process.env.PORT || 3001;
+let port = process.env.PORT ||  3001;
 const app = express();
 const cors = require('cors');
 const server = http.createServer(app);
@@ -10,19 +10,15 @@ const Ip = require('ip');
 const { MongoClient } = require("mongodb");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
-const env=require('dotenv');
-// const serverUrl = "http://localhost:3000";
-const serverUrl="https://ckchat1.vercel.app";
+require('dotenv').config();
+const serverUrl = "http://localhost:3000";
+// const serverUrl="https://ckchat1.vercel.app";
 // const io = socketIo(server);
 const jwt = require('jsonwebtoken');
-const secretKey = "CkChatIsAChatApp3894893&(O(O(&*(0)(**y(K_(O_(~@!~~2@#343322#$2"
-const url = "mongodb+srv://chandankumar6204995:QVP8wQyEMtaMiwhp@ckchat-subscription.ozh698x.mongodb.net/?retryWrites=true&w=majority"
-// const url = "mongodb://localhost:27017";
-// const url = "mongodb+srv://cktech:121122zshadow@zshadow.qqanmxh.mongodb.net/?retryWrites=true&w=majority"
-// const url = env.MONGODB_URI;
-// console.log("url=",url);
+const secretKey = process.env.SECRET_KEY
+const url = process.env.MONGODB_URI;
 const client = new MongoClient(url);
-const database = "ckchat-subscription";
+const database = process.env.DB_NAME;
 
 const axios = require("axios");
 const io = require("socket.io")(server, {
@@ -97,7 +93,7 @@ app.get('/protected', verifyToken, (req, res) => {
 
 
 
-const apiKeys = { "publicKey": "BGOL2kpe-fHu-_DorSKvrULdEmyGMbwYkax8qyBU6_rRfaG1NgW8h_bj0cUmJlGFXSJ2U6QScipCDXY_4czleNY", "privateKey": "ZqwlksKj4RTIus33oPInHSWz3wKeepXVtbu7oT5PsoE" }
+const apiKeys = { "publicKey": process.env.API_KEYS_PUBLIC_KEY, "privateKey":process.env.API_KEYS_PRIVATE_KEY }
 webPush.setVapidDetails(
     'mailto:chandankumar6204995@gmail.com',
     apiKeys.publicKey,
@@ -158,11 +154,11 @@ async function verifyRecaptcha(recaptchaResponse) {
   try {
     console.log("under vefiry");
     const response = await axios.post(
-      "https://www.google.com/recaptcha/api/siteverify",
+      `${process.env.GOOGLE_RECAPTCHA_VERIFICATION_API_URL}`,
       null,
       {
         params: {
-          secret: "6Ldj98YpAAAAAE--9KZUVIi7U5aFQbLvILBEsRuz",
+          secret: GOOGLE_RECAPTCHA_VERIFICATION_SECRET,
           response: recaptchaResponse,
         },
       }
@@ -474,7 +470,7 @@ app.post('/verify-user',async(req,res)=>{
     const secretKey = "*&&*&*Y*U(CkChat)&^%";
     let verify=jwt.verify(req.body.token,secretKey)
 console.log("verify=",verify);
-let decoded=await jwt.decode(req.body.token);
+let decoded= await jwt.decode(req.body.token);
 console.log("decoded",decoded);
    const table = "users";
    const db = await dbConnect(table);
