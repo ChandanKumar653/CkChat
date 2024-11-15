@@ -594,7 +594,7 @@ io.use((socket, next) => {
 console.log(token);
     if (token) {
         try {
-          const secretKey1 = "loginCkChat*&&*&*Y*U(CkChat)&^%loginCkChat";
+          const secretKey1 = process.env.LOGIN_SECRET_KEY;
             const decoded = jwt.verify(token, secretKey1);
             console.log(decoded);
             socket.decoded = decoded; // Attach user data to the socket if needed
