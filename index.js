@@ -11,8 +11,8 @@ const { MongoClient } = require("mongodb");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 require('dotenv').config();
-// const serverUrl = "http://localhost:3000";
-const serverUrl="https://ckchat1.vercel.app";
+const serverUrl = "http://localhost:3000";
+// const serverUrl="https://ckchat1.vercel.app";
 // const io = socketIo(server);
 const jwt = require('jsonwebtoken');
 const secretKey = process.env.SECRET_KEY
@@ -273,7 +273,7 @@ try{
   console.log(bcrypt.compareSync(password, existingUser['password']));
  if( bcrypt.compareSync(password, existingUser['password'])){
 
-   const secretKey = "loginCkChat*&&*&*Y*U(CkChat)&^%loginCkChat";
+   const secretKey = process.env.LOGIN_SECRET_KEY;
 
    // Prepare payload for JWT token
    let payload = {
