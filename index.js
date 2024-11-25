@@ -11,8 +11,8 @@ const { MongoClient } = require("mongodb");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 require('dotenv').config();
-// const serverUrl = "http://localhost:3000";
-const serverUrl="https://ckchat1.vercel.app";
+const serverUrl = "http://localhost:3000";
+// const serverUrl="https://ckchat1.vercel.app";
 // const io = socketIo(server);
 const jwt = require('jsonwebtoken');
 const secretKey = process.env.SECRET_KEY
